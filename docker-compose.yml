@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:16
+    container_name: athos-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: athos_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  web:
+    build: .
+    container_name: athos-app
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    environment:
+      - FLASK_ENV=production
+    volumes:
+      - .:/code
+
+  locust:
+    image: locustio/locust:2.32.0
+    container_name: athos-locust
+    ports:
+      - "8089:8089"
+    volumes:
+      - .:/mnt/locust
+    command: ["-f", "/mnt/locust/tests/locustfile.py", "--host", "http://web:5000", "--web-host", "0.0.0.0"]
+    depends_on:
+      - web
+
+volumes:
+  db_data:

@@ -1,3 +1,6 @@
+# 🧱 **Athos Monitor — Testes Não Funcionais com Docker Swarm**
+
+## 📂 **Estrutura do Projeto**
 
 | Pasta / Arquivo                | Função                                                |
 | ------------------------------ | ----------------------------------------------------- |
@@ -9,39 +12,36 @@
 | `README_SWARM.txt`             | Instruções completas                                  |
 | `requirements.txt`             | Dependências Python                                   |
 
----
 
 ## 🧭 **PASSO A PASSO — Docker Swarm com Limites de Recursos**
 
 ### 🔹 **1️⃣ Inicializar o Docker Swarm (apenas 1x na máquina)**
 
-Abra o PowerShell como administrador e rode:
+Abra o PowerShell **como administrador** e execute:
 
 ```bash
+docker swarm leave --force
 docker swarm init
 ```
 
----
 
 ### 🔹 **2️⃣ Construir a imagem local do app**
 
-Antes de subir o stack, precisamos criar a imagem que o Swarm usará:
+Antes de subir o stack, construa a imagem local que o Swarm usará:
 
 ```bash
 docker build -t athos_app_image:latest .
 ```
 
----
 
 ### 🔹 **3️⃣ Fazer o deploy do stack**
 
-Isso cria 3 serviços com limites de CPU/memória definidos:
+Cria 3 serviços com limites de CPU e memória definidos:
 
 ```bash
 docker stack deploy -c docker-stack.yml athos
 ```
 
----
 
 ### 🔹 **4️⃣ Verificar os serviços em execução**
 
@@ -49,7 +49,7 @@ docker stack deploy -c docker-stack.yml athos
 docker stack services athos
 ```
 
-Você verá algo como:
+Você deve ver algo como:
 
 ```
 ID                  NAME                 MODE        REPLICAS   IMAGE
@@ -58,111 +58,119 @@ xxxxxxx             athos_web            replicated  1/1        athos_app_image:
 xxxxxxx             athos_locust         replicated  1/1        locustio/locust:2.32.0
 ```
 
----
 
 ### 🔹 **5️⃣ Acessar as aplicações**
 
-* API → [http://localhost:5000/usuarios](http://localhost:5000/usuarios)
-* Locust (stress test) → [http://localhost:8089](http://localhost:8089)
+* **API:** [http://localhost:5000/usuarios](http://localhost:5000/usuarios)
+* **Locust (stress test):** [http://localhost:8089](http://localhost:8089)
 
----
 
 ## 🧪 **TESTES SOLICITADOS PELO PROFESSOR**
 
 ### 🧩 **1️⃣ Teste de Performance**
 
-Verifica tempo de resposta e estabilidade sob carga leve.
+Avalia o tempo de resposta e estabilidade sob carga leve.
 
-No Locust:
+**No Locust:**
 
 * **Host:** `http://web:5000`
 * **Users:** `50`
 * **Spawn rate:** `5`
 
-➡️ Observe o tempo médio de resposta (ideal: < 500ms).
+✅ *Objetivo:* medir tempo médio de resposta (ideal: abaixo de 500 ms).
 
----
 
 ### 🧩 **2️⃣ Teste de Stress**
 
-Força o limite da CPU/memória até falha.
+Força o limite da CPU/memória até provocar falha.
 
-1️⃣ Ajuste no Locust:
+**No Locust:**
 
-* **Users:** `300`
-* **Spawn rate:** `30`
+* **Users:** `800`
+* **Spawn rate:** `15`
 
-2️⃣ Em outro terminal, monitore:
+Em outro terminal, acompanhe o consumo:
 
 ```bash
 docker stats
 ```
 
-➡️ O container `athos_web` (Flask) tem limite de:
+➡️ O container `athos_web` tem limite de:
 
 * **CPU:** 0.5 core
-* **Memória:** 512MB
+* **Memória:** 512 MB
 
-Quando o uso atinge 100%, o Docker pode:
+🧠 **Comportamento esperado:**
 
-* Retornar erros 500 (app travando);
-* Reiniciar o serviço automaticamente (comportamento de crash controlado).
+* O uso atinge 100% de CPU/memória;
+* O app começa a lançar erros 500;
+* O Docker pode reiniciar o serviço automaticamente (crash controlado).
 
----
 
 ### 🧩 **3️⃣ Teste de Fail & Recovery**
 
-Durante o stress, simule uma queda real do banco.
+#### 🧨 **(a) Queda do Banco**
 
-1️⃣ Derrube o banco:
+Durante o stress test, simule uma falha no banco:
 
 ```bash
 docker service scale athos_db=0
 ```
 
-➡️ O app começa a lançar erros (500 / “database unavailable”).
+➡️ O app começa a lançar erros `500 / database unavailable`.
 
-2️⃣ Traga o banco de volta:
+Traga o banco de volta:
 
 ```bash
 docker service scale athos_db=1
 ```
 
-➡️ O sistema se recupera automaticamente — Locust volta a exibir sucesso (200 OK).
+➡️ O sistema se recupera automaticamente — Locust volta a exibir respostas `200 OK`.
 
----
+
+#### 🔁 **(b) Reinício do App (Fail & Recovery Interno)**
+
+Durante o stress test, simule o reinício inesperado do serviço principal:
+
+```bash
+docker service update --force athos_web
+```
+
+➡️ O container `athos_web` será reiniciado — parte das requisições falhará por alguns segundos.
+➡️ Assim que o serviço voltar, o Locust retomará as respostas `200 OK`.
+
+✅ Esse é o teste clássico de **Fail & Recovery interno**, mostrando a resiliência do ambiente sob orquestração.
+
 
 ### 🧩 **4️⃣ Teste de Resiliência e Monitoramento**
 
-* Ver logs:
+**Ver logs recentes:**
 
 ```bash
 docker service logs athos_web --since 1m
 ```
 
-* Ver consumo:
+**Monitorar uso de recursos:**
 
 ```bash
 docker stats
 ```
 
----
 
-### 🧹 **Encerrar o ambiente (limpar tudo)**
+### 🧹 **Encerrar o ambiente (limpeza final)**
 
 ```bash
 docker stack rm athos
 docker volume rm athos_db_data
 ```
 
----
 
 ## 🧠 **Resumo do Comportamento Esperado**
 
 | Tipo de Teste       | Objetivo                                 | Resultado Esperado                                     |
 | ------------------- | ---------------------------------------- | ------------------------------------------------------ |
-| **Performance**     | Verificar estabilidade                   | API responde <500ms                                    |
+| **Performance**     | Verificar estabilidade                   | API responde <500 ms                                   |
 | **Stress**          | Forçar o sistema a falhar por sobrecarga | App atinge limite de CPU/memória, travando/reiniciando |
-| **Fail & Recovery** | Simular queda real                       | App falha e se recupera após retorno do banco          |
+| **Fail & Recovery** | Simular queda real                       | App e banco caem e se recuperam automaticamente        |
 | **Resiliência**     | Medir estabilidade após falha            | Sistema retoma respostas 200 OK                        |
 
