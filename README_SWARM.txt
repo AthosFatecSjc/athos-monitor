@@ -8,11 +8,7 @@ Observações importantes:
 - No Docker Desktop Windows, você precisa habilitar Swarm (docker swarm init) e garantir que o Docker Desktop CPU/memory settings sejam suficientes.
 - Resource limits funcionam melhor no modo Swarm (docker stack deploy) porque o campo 'deploy.resources' é ignorado pelo 'docker compose up' sem swarm.
 
-Passo a passo (modo simples usando docker compose com limites):
-1) Se preferir não usar Swarm, edite o docker-compose.yml e adicione limites usando 'deploy' (note: deploy é respeitado em Swarm).
-   Exemplos (usando docker-stack.yml com deploy.resources):
-   - athos-app: cpus 0.5, memory 512M
-   - locust: cpus 1.0, memory 1024M
+Passo a passo (modo simples usando docker compose com limites)
 
 Modo A - Usando Docker Swarm (recomendado):
 ------------------------------------------
@@ -46,5 +42,3 @@ Dicas adicionais:
 - Use 'docker stats' para monitorar consumo.
 - Ajuste os limites (cpus/memory) para calibrar o ponto de falha que deseja demonstrar.
 - Se o Locust estiver consumindo muita CPU, reduza a CPU alocada para ele ou execute Locust em outra máquina/VM.
-
-Boa apresentação!
